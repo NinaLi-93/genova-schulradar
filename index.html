@@ -307,9 +307,6 @@
                 <p style="margin: 10px 0;">Please load the CSV file manually:</p>
                 <input type="file" id="csvFileInput" accept=".csv" style="margin: 10px 10px 0 0; padding: 8px;">
                 <button onclick="loadLocalCSV()" class="search-btn" style="margin-top: 10px;">Load CSV File</button>
-                <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                    Download: <a href="https://raw.githubusercontent.com/NinaLi-93/genova-schoolradar/main/genova-schooldata.csv" download style="color: var(--gs-dark-blue); font-weight: 600;">genova-schooldata.csv</a>
-                </p>
             </div>
             <form class="search-form" id="searchForm">
                 <input 
@@ -349,19 +346,19 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #092FAC;"></div>
-                        <span>Primary Schools</span>
+                        <span>Scuola Primaria</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #9F80FF;"></div>
-                        <span>Middle Schools</span>
+                        <span>Scuola Secondaria I</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #5DC18B;"></div>
-                        <span>High Schools</span>
+                        <span>Scuola Secondaria II</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #FF6B4A;"></div>
-                        <span>Other Schools</span>
+                        <span>Scuola Infanzia</span>
                     </div>
                     <div style="margin-top: 10px; font-size: 0.8rem; color: #666; border-top: 1px solid #eee; padding-top: 8px;">
                         <strong>💡 Tip:</strong> Larger circles = more students
@@ -377,7 +374,7 @@
         let userLocation = null;
         let markersGroup = null;
 
-        // GitHub CSV URL - CHANGE THIS TO YOUR GENOVA REPOSITORY
+        // GitHub CSV URL
         const GITHUB_CSV_URL = 'https://raw.githubusercontent.com/NinaLi-93/genova-schoolradar/main/genova-schooldata.csv';
 
         // Load CSV from GitHub automatically
@@ -388,7 +385,6 @@
                 
                 let csvData;
                 
-                // Try direct fetch first
                 try {
                     const response = await fetch(GITHUB_CSV_URL);
                     if (!response.ok) {
@@ -399,7 +395,6 @@
                 } catch (directError) {
                     console.log('Direct fetch failed, trying CORS proxy...', directError);
                     
-                    // Try with CORS proxy
                     const corsProxy = 'https://corsproxy.io/?' + encodeURIComponent(GITHUB_CSV_URL);
                     const response = await fetch(corsProxy);
                     if (!response.ok) {
@@ -409,12 +404,10 @@
                     console.log('✅ CORS proxy fetch successful');
                 }
                 
-                // Process the CSV data
                 return processCSVData(csvData);
                 
             } catch (error) {
                 console.error('Failed to load from GitHub:', error);
-                // Show upload fallback
                 document.getElementById('uploadFallback').style.display = 'block';
                 showError('Could not load data from GitHub. Please use the manual upload option above.');
                 return false;
@@ -444,7 +437,7 @@
             reader.readAsText(file);
         }
 
-        // Process CSV data
+        // Process CSV data - ANGEPASST FÜR IHRE HEADER
         function processCSVData(csvData) {
             try {
                 console.log('📄 CSV data loaded, size:', csvData.length, 'characters');
@@ -462,7 +455,7 @@
                 console.log(`🔍 CSV columns:`, parsedData.meta.fields);
                 console.log(`🔍 First 3 rows:`, parsedData.data.slice(0, 3));
                 
-                // Detect field names based on actual CSV structure
+                // ✅ ANGEPASST FÜR IHRE CSV-HEADER
                 let latField = null;
                 let lonField = null;
                 let nameField = null;
@@ -477,19 +470,19 @@
                     const lowerField = (field || '').toLowerCase().trim();
                     
                     // Latitude
-                    if (lowerField === 'latitude' || lowerField.includes('latitud')) latField = field;
+                    if (lowerField === 'latitude') latField = field;
                     // Longitude  
-                    if (lowerField === 'longitude' || lowerField.includes('longitud')) lonField = field;
-                    // Name - Denominazione
-                    if (lowerField === 'denominazione' || lowerField.includes('denominazion')) nameField = field;
-                    // Address - Indirizzo (only street address)
-                    if (lowerField === 'indirizzo' || lowerField.includes('indirizzo')) addressField = field;
-                    // City - Comune
-                    if (lowerField === 'comune' || lowerField.includes('comune')) cityField = field;
-                    // Student count - "All Students"
-                    if (lowerField === 'all students' || lowerField.includes('all students') || lowerField.includes('students')) totalField = field;
-                    // School type - "School Type"
-                    if (lowerField === 'school type' || lowerField === 'school_type' || lowerField.includes('school') && lowerField.includes('type')) typeField = field;
+                    if (lowerField === 'longitude') lonField = field;
+                    // Name - DENOMINAZIONESCUOLA
+                    if (lowerField === 'denominazionescuola') nameField = field;
+                    // Address - Full Address
+                    if (lowerField === 'full address') addressField = field;
+                    // City - PROVINCIA
+                    if (lowerField === 'provincia') cityField = field;
+                    // Student count - Alunni
+                    if (lowerField === 'alunni') totalField = field;
+                    // School type - ORDINESCUOLA
+                    if (lowerField === 'ordinescuola') typeField = field;
                 }
                 
                 console.log('🗺️ Detected fields:', {
@@ -508,29 +501,36 @@
                     const lon = school[lonField];
                     return lat && lon && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lon));
                 }).map(school => {
-                    // Determine school type from School Type column
+                    // ✅ ANGEPASST: Schultyp aus ORDINESCUOLA bestimmen
                     let schoolType = 'other';
-                    let displayType = 'Other Schools';
+                    let displayType = 'Other';
                     const typeValue = (school[typeField] || '').toLowerCase().trim();
                     
-                    console.log(`Processing school: ${school[nameField]}, School Type: "${school[typeField]}"`);
+                    console.log(`Processing school: ${school[nameField]}, ORDINESCUOLA: "${school[typeField]}"`);
                     
-                    // Check for your actual CSV values: "prim", "sec i", "sec ii"
-                    if (typeValue === 'prim' || typeValue.includes('prim')) {
+                    // Italienische Schultypen:
+                    // SCUOLA PRIMARIA
+                    // SCUOLA SECONDARIA DI I GRADO  
+                    // SCUOLA SECONDARIA DI II GRADO
+                    // SCUOLA DELL'INFANZIA
+                    
+                    if (typeValue.includes('primaria')) {
                         schoolType = 'primaria';
-                        displayType = 'Primary School';
-                    } else if (typeValue.includes('sec')) {
-                        // Check if it's "sec ii" or just "sec i"
-                        if (typeValue.includes('ii') || typeValue.includes(' 2') || typeValue === 'sec ii') {
+                        displayType = 'Scuola Primaria';
+                    } else if (typeValue.includes('infanzia')) {
+                        schoolType = 'infanzia';
+                        displayType = "Scuola dell'Infanzia";
+                    } else if (typeValue.includes('secondaria')) {
+                        if (typeValue.includes(' ii ') || typeValue.includes('ii grado') || typeValue.includes('secondo grado')) {
                             schoolType = 'secondaria_ii';
-                            displayType = 'High School';
-                        } else if (typeValue.includes(' i') || typeValue.includes(' 1') || typeValue === 'sec i') {
+                            displayType = 'Scuola Secondaria II Grado';
+                        } else if (typeValue.includes(' i ') || typeValue.includes('i grado') || typeValue.includes('primo grado')) {
                             schoolType = 'secondaria_i';
-                            displayType = 'Middle School';
+                            displayType = 'Scuola Secondaria I Grado';
                         }
                     }
                     
-                    // Student count from "All Students" column
+                    // Student count from Alunni column
                     let studentCount = 0;
                     if (school[totalField] && !isNaN(parseInt(school[totalField]))) {
                         const value = parseInt(school[totalField]);
@@ -563,6 +563,7 @@
                     primaria: schoolsData.filter(s => s.SCHOOL_TYPE === 'primaria').length,
                     secondaria_i: schoolsData.filter(s => s.SCHOOL_TYPE === 'secondaria_i').length,
                     secondaria_ii: schoolsData.filter(s => s.SCHOOL_TYPE === 'secondaria_ii').length,
+                    infanzia: schoolsData.filter(s => s.SCHOOL_TYPE === 'infanzia').length,
                     other: schoolsData.filter(s => s.SCHOOL_TYPE === 'other').length
                 };
                 
@@ -678,13 +679,15 @@
                     return '#9F80FF';
                 case 'secondaria_ii':
                     return '#5DC18B';
+                case 'infanzia':
+                    return '#FF6B4A';
                 default:
                     return '#FF6B4A';
             }
         }
 
         function formatSchoolType(school) {
-            return school.SCHOOL_TYPE_DISPLAY || school.TYPE_ORIGINAL || 'Other Schools';
+            return school.SCHOOL_TYPE_DISPLAY || school.TYPE_ORIGINAL || 'Other';
         }
 
         function showAllSchoolsOnMap() {
@@ -761,10 +764,10 @@
                 primaria: visibleSchools.filter(s => s.SCHOOL_TYPE === 'primaria').length,
                 secondaria_i: visibleSchools.filter(s => s.SCHOOL_TYPE === 'secondaria_i').length,
                 secondaria_ii: visibleSchools.filter(s => s.SCHOOL_TYPE === 'secondaria_ii').length,
+                infanzia: visibleSchools.filter(s => s.SCHOOL_TYPE === 'infanzia').length,
                 other: visibleSchools.filter(s => s.SCHOOL_TYPE === 'other').length
             };
             
-            // Build stats text
             let statsText = `🏫 ${visibleSchools.length} schools in current view`;
             
             if (userLocation) {
@@ -776,12 +779,12 @@
                 statsText += ` | 👥 ${totalStudents.toLocaleString()} total students`;
             }
             
-            // Add type breakdown with colored indicators
             const typeBreakdownParts = [];
-            if (typeCount.primaria > 0) typeBreakdownParts.push(`🔵 ${typeCount.primaria} Primary`);
-            if (typeCount.secondaria_i > 0) typeBreakdownParts.push(`🟣 ${typeCount.secondaria_i} Middle`);
-            if (typeCount.secondaria_ii > 0) typeBreakdownParts.push(`🟢 ${typeCount.secondaria_ii} High`);
-            if (typeCount.other > 0) typeBreakdownParts.push(`🔴 ${typeCount.other} Other`);
+            if (typeCount.primaria > 0) typeBreakdownParts.push(`🔵 ${typeCount.primaria} Primaria`);
+            if (typeCount.secondaria_i > 0) typeBreakdownParts.push(`🟣 ${typeCount.secondaria_i} Sec I`);
+            if (typeCount.secondaria_ii > 0) typeBreakdownParts.push(`🟢 ${typeCount.secondaria_ii} Sec II`);
+            if (typeCount.infanzia > 0) typeBreakdownParts.push(`🔴 ${typeCount.infanzia} Infanzia`);
+            if (typeCount.other > 0) typeBreakdownParts.push(`⚪ ${typeCount.other} Other`);
             
             if (typeBreakdownParts.length > 0) {
                 statsText += ` | ${typeBreakdownParts.join(', ')}`;
@@ -1051,10 +1054,7 @@
         });
 
         window.addEventListener('load', async () => {
-            // Initialize map
             initMap();
-            
-            // Try to load data from GitHub automatically
             const loaded = await loadFromGitHub();
             
             if (loaded) {
